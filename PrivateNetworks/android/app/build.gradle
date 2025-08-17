@@ -82,6 +82,7 @@ android {
         applicationId "com.privatenetworks"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        compileSdk rootProject.ext.compileSdkVersion
         versionCode 1
         versionName "1.0"
     }

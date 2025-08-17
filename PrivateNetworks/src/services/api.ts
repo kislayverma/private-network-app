@@ -1,6 +1,6 @@
 import axios, {AxiosResponse} from 'axios';
 
-const API_BASE_URL = 'https://registry.yourapp.com';
+const API_BASE_URL = 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RouteProp} from '@react-navigation/native';
-import {QRCodePlaceholder, generateQRData} from '../services/qr';
+import {generateQRData} from '../services/qr';
 import {cryptoService} from '../services/crypto';
+import { QRCodePlaceholder } from './QRCodePlaceholder';
 
 type RootStackParamList = {
   Welcome: undefined;

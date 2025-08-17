@@ -63,7 +63,9 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
   const handleUsernameChange = (text: string) => {
     const cleanText = text.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(cleanText);
-    checkUsernameAvailability(cleanText);
+    setIsUsernameAvailable(true);
+
+    // checkUsernameAvailability(cleanText);
   };
 
   const validateEmail = (emailInput: string) => {
@@ -86,21 +88,22 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
+Alert.alert('Error', 'going');
+    // if (phone && !validatePhone(phone)) {
+    //   Alert.alert('Error', 'Please enter a valid phone number');
+    //   return;
+    // }
 
-    if (phone && !validatePhone(phone)) {
-      Alert.alert('Error', 'Please enter a valid phone number');
-      return;
-    }
-
-    if (isUsernameAvailable === false) {
-      Alert.alert('Error', 'Username is not available');
-      return;
-    }
+    // if (isUsernameAvailable === false) {
+    //   Alert.alert('Error', 'Username is not available');
+    //   return;
+    // }
 
     setIsLoading(true);
 
     try {
       const keyPair = await cryptoService.generateKeyPair();
+      console.log(keyPair);
       
       const registerData = {
         userId: username,
@@ -108,6 +111,7 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
         email: email,
         phone: phone || undefined,
       };
+      console.log(registerData);
 
       const response = await authAPI.register(registerData);
       

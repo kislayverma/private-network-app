@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import nacl from 'tweetnacl';
 import * as naclUtil from 'tweetnacl-util';
 

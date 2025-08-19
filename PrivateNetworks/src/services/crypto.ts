@@ -69,7 +69,8 @@ class CryptoService {
   }
 
   formatPublicKey(publicKeyBase64: string): string {
-    return `ed25519:${publicKeyBase64}`;
+    // return `ed25519:${publicKeyBase64}`;
+    return publicKeyBase64;
   }
 
   generateAuthChallenge(): string {

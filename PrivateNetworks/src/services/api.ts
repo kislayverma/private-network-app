@@ -1,6 +1,11 @@
 import axios, {AxiosResponse} from 'axios';
+import {Platform} from 'react-native';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = __DEV__ 
+  ? Platform.OS === 'ios' 
+    ? 'http://127.0.0.1:3001/api'
+    : 'http://10.0.2.2:3001/api'
+  : 'https://your-production-api.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,9 +14,18 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+api.interceptors.request.use(request => {
+  console.log('Starting Request', JSON.stringify(request))
+  return request
+});
+    
+api.interceptors.response.use(response => {
+  console.log('Response:', JSON.stringify(response))
+  return response
+});
 
 export interface RegisterRequest {
-  userId: string;
+  username: string;
   publicKey: string;
   email: string;
   phone?: string;
@@ -73,8 +87,9 @@ class AuthAPI {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Registration failed');
+        // throw new Error(error.response?.data?.message || 'Registration failed');
       }
+      console.log(error);
       throw error;
     }
   }

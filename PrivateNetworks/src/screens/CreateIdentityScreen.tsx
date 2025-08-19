@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
-import {authAPI} from '../services/api';
+import {authAPI, RegisterRequest} from '../services/api';
 import {cryptoService} from '../services/crypto';
 import {storageService} from '../services/storage';
 
@@ -65,7 +65,7 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
     setUsername(cleanText);
     setIsUsernameAvailable(true);
 
-    // checkUsernameAvailability(cleanText);
+    checkUsernameAvailability(cleanText);
   };
 
   const validateEmail = (emailInput: string) => {
@@ -88,7 +88,7 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-Alert.alert('Error', 'going');
+
     // if (phone && !validatePhone(phone)) {
     //   Alert.alert('Error', 'Please enter a valid phone number');
     //   return;
@@ -105,8 +105,8 @@ Alert.alert('Error', 'going');
       const keyPair = await cryptoService.generateKeyPair();
       console.log(keyPair);
       
-      const registerData = {
-        userId: username,
+      const registerData: RegisterRequest = {
+        username: username,
         publicKey: cryptoService.formatPublicKey(keyPair.publicKey),
         email: email,
         phone: phone || undefined,

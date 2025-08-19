@@ -8,6 +8,10 @@ import CreateIdentityScreen from '../screens/CreateIdentityScreen';
 import IdentityConfirmationScreen from '../screens/IdentityConfirmationScreen';
 import SignInScreen from '../screens/SignInScreen';
 import HomeScreen from '../screens/HomeScreen';
+import NetworkSetupScreen from '../screens/NetworkSetupScreen';
+import NetworkSettingsScreen from '../screens/NetworkSettingsScreen';
+import NetworkCreatedScreen from '../screens/NetworkCreatedScreen';
+import NetworksListScreen from '../screens/NetworksListScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -21,6 +25,26 @@ export type RootStackParamList = {
   };
   SignIn: undefined;
   Home: undefined;
+  NetworksList: undefined;
+  NetworkSetup: undefined;
+  NetworkSettings: {
+    networkName: string;
+    description: string;
+    networkId: string;
+    maxMembers: number;
+  };
+  NetworkCreated: {
+    networkName: string;
+    description: string;
+    networkId: string;
+    maxMembers: number;
+    inviteCode: string;
+    settings: {
+      joinApproval: 'require_admin' | 'auto_approve';
+      memberPermissions: 'admin_only' | 'members_can_invite';
+      dataRetention: 'forever' | '30_days' | '7_days';
+    };
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -47,13 +71,19 @@ const AppStackNavigator: React.FC = () => {
         }}>
         {authState.isAuthenticated ? (
           // Authenticated stack
-          <Stack.Screen 
-            name="Home" 
-            component={HomeScreen}
-            options={{
-              animationTypeForReplace: authState.isAuthenticated ? 'push' : 'pop',
-            }}
-          />
+          <>
+            <Stack.Screen 
+              name="Home" 
+              component={HomeScreen}
+              options={{
+                animationTypeForReplace: authState.isAuthenticated ? 'push' : 'pop',
+              }}
+            />
+            <Stack.Screen name="NetworksList" component={NetworksListScreen} />
+            <Stack.Screen name="NetworkSetup" component={NetworkSetupScreen} />
+            <Stack.Screen name="NetworkSettings" component={NetworkSettingsScreen} />
+            <Stack.Screen name="NetworkCreated" component={NetworkCreatedScreen} />
+          </>
         ) : (
           // Unauthenticated stack
           <>

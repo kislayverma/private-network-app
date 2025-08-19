@@ -15,6 +15,8 @@ import {RouteProp} from '@react-navigation/native';
 import {RootStackParamList} from '../navigation/AppNavigator';
 import {useAuth} from '../context/AuthContext';
 import {authAPI, CreateNetworkRequest} from '../services/api';
+import {storageService, StoredNetwork} from '../services/storage';
+import {AppHeader} from '../components';
 
 type NetworkSettingsScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -72,6 +74,33 @@ const NetworkSettingsScreen: React.FC<Props> = ({navigation, route}) => {
       const response = await authAPI.createNetwork(createNetworkData, authState.token);
 
       if (response.success) {
+        // Store network locally
+        const storedNetwork: StoredNetwork = {
+          networkId,
+          name: networkName,
+          description,
+          inviteCode: response.inviteCode,
+          myRole: 'admin', // Creator is always admin
+          memberCount: 1, // Just the creator
+          maxMembers,
+          tier: 'free', // Always free for new networks
+          settings: {
+            joinApproval,
+            memberPermissions,
+            dataRetention,
+          },
+          joinedAt: new Date().toISOString(),
+          createdAt: response.created || new Date().toISOString(),
+          isCreator: true,
+        };
+
+        const currentUserId = authState.userProfile?.username;
+        if (!currentUserId) {
+          throw new Error('User not found - cannot store network');
+        }
+        
+        await storageService.storeNetwork(storedNetwork, currentUserId);
+
         // Navigate to network created screen
         navigation.navigate('NetworkCreated', {
           networkName,
@@ -137,13 +166,12 @@ const NetworkSettingsScreen: React.FC<Props> = ({navigation, route}) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#1a1a1a" barStyle="light-content" />
       
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Network Settings</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <AppHeader 
+        title="Network Settings"
+        showBackButton={true}
+        showLogoutButton={true}
+        onBackPress={handleBack}
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.settingsContainer}>
@@ -232,33 +260,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#6366f1',
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  placeholder: {
-    width: 40,
   },
   content: {
     flex: 1,

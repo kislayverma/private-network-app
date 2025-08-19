@@ -16,6 +16,7 @@ import {useAuth} from '../context/AuthContext';
 import {storageService} from '../services/storage';
 import {cryptoService} from '../services/crypto';
 import {authAPI, LoginRequest, LoginResponse} from '../services/api';
+import {AppHeader} from '../components';
 
 type SignInScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -113,13 +114,12 @@ const SignInScreen: React.FC<Props> = ({navigation}) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#1a1a1a" barStyle="light-content" />
       
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackToWelcome} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sign In</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <AppHeader 
+        title="Sign In"
+        showBackButton={true}
+        showLogoutButton={false}
+        onBackPress={handleBackToWelcome}
+      />
 
       <View style={styles.content}>
         <View style={styles.formContainer}>
@@ -179,33 +179,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#6366f1',
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  placeholder: {
-    width: 40,
   },
   content: {
     flex: 1,

@@ -9,11 +9,13 @@ import {
   Alert,
   Clipboard,
   Share,
+  ScrollView,
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RouteProp} from '@react-navigation/native';
 import {RootStackParamList} from '../navigation/AppNavigator';
 import {useAuth} from '../context/AuthContext';
+import {AppHeader} from '../components';
 
 type NetworkCreatedScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -80,7 +82,16 @@ const NetworkCreatedScreen: React.FC<Props> = ({navigation, route}) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#1a1a1a" barStyle="light-content" />
       
-      <View style={styles.content}>
+      <AppHeader 
+        title="Network Ready!"
+        showHomeButton={true}
+        showLogoutButton={true}
+      />
+
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.successContainer}>
           <Text style={styles.successIcon}>🎉</Text>
           <Text style={styles.title}>Network Ready!</Text>
@@ -148,7 +159,7 @@ const NetworkCreatedScreen: React.FC<Props> = ({navigation, route}) => {
             </Text>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -158,8 +169,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a1a',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 40,

@@ -8,11 +8,15 @@ import {
   StatusBar,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RouteProp} from '@react-navigation/native';
+import {useAuth} from '../context/AuthContext';
 import {generateQRData} from '../services/qr';
 import {cryptoService} from '../services/crypto';
+import {storageService} from '../services/storage';
+import {authAPI} from '../services/api';
 import { QRCodePlaceholder } from './QRCodePlaceholder';
 
 type RootStackParamList = {
@@ -46,6 +50,8 @@ interface Props {
 const IdentityConfirmationScreen: React.FC<Props> = ({navigation, route}) => {
   const {username, email, phone, publicKey, privateKey} = route.params;
   const [hasBackedUp, setHasBackedUp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const {refreshAuthState} = useAuth();
 
   const formattedPublicKey = cryptoService.formatPublicKey(publicKey);
   const displayKey = cryptoService.getDisplayKey(publicKey);
@@ -64,7 +70,7 @@ const IdentityConfirmationScreen: React.FC<Props> = ({navigation, route}) => {
     );
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!hasBackedUp) {
       Alert.alert(
         'Important!',
@@ -76,7 +82,50 @@ const IdentityConfirmationScreen: React.FC<Props> = ({navigation, route}) => {
       return;
     }
 
-    navigation.navigate('Home');
+    setIsLoading(true);
+
+    try {
+      // Note: Identity is already stored from CreateIdentityScreen
+      // Create auth challenge and login automatically
+      const timestamp = Date.now();
+      const challenge = cryptoService.generateAuthChallenge(timestamp);
+      const authMessage = challenge;
+      const signature = await cryptoService.signMessage(authMessage, privateKey);
+
+      // Login to get auth token
+      const loginResponse = await authAPI.login({
+        username,
+        signature,
+        timestamp,
+        message: authMessage,
+      });
+
+      if (loginResponse.success) {
+        // Store auth token and user profile
+        await storageService.storeAuthToken(loginResponse.token);
+        const userProfile = await authAPI.getUserProfile(loginResponse.token);
+        await storageService.storeUserProfile(userProfile);
+
+        // Refresh auth state - this will navigate to Home automatically
+        await refreshAuthState();
+      } else {
+        throw new Error('Login failed after identity creation');
+      }
+    } catch (error) {
+      console.error('Error completing identity setup:', error);
+      Alert.alert(
+        'Setup Error',
+        'There was a problem completing your identity setup. You can try signing in manually from the welcome screen.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Welcome'),
+          },
+        ]
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 
@@ -118,15 +167,20 @@ const IdentityConfirmationScreen: React.FC<Props> = ({navigation, route}) => {
             style={[
               styles.continueButton,
               hasBackedUp && styles.continueButtonEnabled,
+              isLoading && styles.continueButtonDisabled,
             ]}
             onPress={handleContinue}
-            disabled={!hasBackedUp}>
-            <Text style={[
-              styles.continueButtonText,
-              hasBackedUp && styles.continueButtonTextEnabled,
-            ]}>
-              I've Saved It
-            </Text>
+            disabled={!hasBackedUp || isLoading}>
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Text style={[
+                styles.continueButtonText,
+                hasBackedUp && styles.continueButtonTextEnabled,
+              ]}>
+                I've Saved It
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -235,6 +289,9 @@ const styles = StyleSheet.create({
   },
   continueButtonEnabled: {
     backgroundColor: '#6366f1',
+  },
+  continueButtonDisabled: {
+    opacity: 0.6,
   },
   continueButtonText: {
     color: '#9ca3af',

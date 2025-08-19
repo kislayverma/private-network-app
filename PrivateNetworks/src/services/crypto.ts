@@ -73,8 +73,8 @@ class CryptoService {
     return publicKeyBase64;
   }
 
-  generateAuthChallenge(): string {
-    const timestamp = Date.now();
+  generateAuthChallenge(timestamp: Number): string {
+    // const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(2, 15);
     return `auth_challenge_${timestamp}_${nonce}`;
   }

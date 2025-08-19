@@ -38,9 +38,10 @@ export interface RegisterResponse {
 }
 
 export interface LoginRequest {
-  userId: string;
+  username: string;
   signature: string;
   timestamp: number;
+  message: string;
 }
 
 export interface LoginResponse {
@@ -50,7 +51,7 @@ export interface LoginResponse {
 }
 
 export interface UserProfile {
-  userId: string;
+  username: string;
   publicKey: string;
   email: string;
   created: string;

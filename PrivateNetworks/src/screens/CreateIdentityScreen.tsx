@@ -65,7 +65,7 @@ const CreateIdentityScreen: React.FC<Props> = ({navigation}) => {
     setUsername(cleanText);
     setIsUsernameAvailable(true);
 
-    checkUsernameAvailability(cleanText);
+    // checkUsernameAvailability(cleanText);
   };
 
   const validateEmail = (emailInput: string) => {

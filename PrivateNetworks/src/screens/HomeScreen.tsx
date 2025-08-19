@@ -6,15 +6,58 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  Alert,
 } from 'react-native';
+import {useAuth} from '../context/AuthContext';
+import {storageService} from '../services/storage';
 
 const HomeScreen: React.FC = () => {
+  const {authState, signOut, refreshAuthState} = useAuth();
+
+  const handleSignOut = (): void => {
+    Alert.alert(
+      'Sign Out Options',
+      'Choose how you want to sign out:',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Sign Out (Keep Identity)',
+          onPress: signOutKeepIdentity,
+        },
+        {
+          text: 'Complete Sign Out',
+          style: 'destructive',
+          onPress: signOut,
+        },
+      ]
+    );
+  };
+
+  const signOutKeepIdentity = async (): void => {
+    try {
+      // Clear auth token and profile but keep private key
+      await storageService.removeAuthToken();
+      await storageService.removeUserProfile();
+      
+      // Refresh auth state to show welcome screen
+      await refreshAuthState();
+    } catch (error) {
+      console.error('Sign out (keep identity) failed:', error);
+      // Fallback to complete sign out
+      await signOut();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#1a1a1a" barStyle="light-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Networks</Text>
-        <Text style={styles.username}>@alice</Text>
+        <TouchableOpacity onPress={handleSignOut}>
+          <Text style={styles.username}>
+            @{authState.userProfile?.username || 'user'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>

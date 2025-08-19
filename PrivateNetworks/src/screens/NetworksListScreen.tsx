@@ -9,11 +9,13 @@ import {
   FlatList,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../navigation/AppNavigator';
 import {useAuth} from '../context/AuthContext';
 import {storageService, StoredNetwork} from '../services/storage';
+import {authAPI} from '../services/api';
 import {AppHeader} from '../components';
 
 type NetworksListScreenNavigationProp = StackNavigationProp<
@@ -30,6 +32,8 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
   const [networks, setNetworks] = useState<StoredNetwork[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [syncing, setSyncing] = useState<boolean>(false);
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
 
   const loadNetworks = async (): Promise<void> => {
     try {
@@ -39,13 +43,25 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
         return;
       }
       
-      const userNetworks = await storageService.getUserNetworks(authState.userProfile.username);
-      setNetworks(userNetworks.sort((a, b) => {
+      let userNetworks = await storageService.getUserNetworks(authState.userProfile.username);
+      
+      // Sync pending request statuses with backend
+      if (authState.token) {
+        userNetworks = await syncPendingRequestStatuses(userNetworks, authState.userProfile.username);
+      }
+      
+      const sortedNetworks = userNetworks.sort((a, b) => {
         // Sort by: created networks first, then by creation date
         if (a.isCreator && !b.isCreator) return -1;
         if (!a.isCreator && b.isCreator) return 1;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }));
+      });
+      setNetworks(sortedNetworks);
+      
+      // Load pending approval counts for admin networks
+      if (authState.token) {
+        await loadPendingCounts(sortedNetworks);
+      }
     } catch (error) {
       console.error('Failed to load networks:', error);
       Alert.alert('Error', 'Failed to load networks');
@@ -53,6 +69,81 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const syncPendingRequestStatuses = async (networks: StoredNetwork[], userId: string): Promise<StoredNetwork[]> => {
+    try {
+      // Get all pending requests from backend
+      const backendRequests = await authAPI.getUserPendingRequests(authState.token!);
+      const updatedNetworks = [...networks];
+      let hasChanges = false;
+
+      // Check each locally pending network against backend status
+      for (let i = 0; i < updatedNetworks.length; i++) {
+        const network = updatedNetworks[i];
+        
+        if (network.membershipStatus === 'pending' && network.requestId) {
+          // Find corresponding backend request
+          const backendRequest = backendRequests.find(req => req.requestId === network.requestId);
+          
+          if (!backendRequest) {
+            // Request no longer exists on backend - likely approved or denied
+            // Remove from local storage since we can't determine the outcome
+            console.log(`Removing orphaned pending request for network: ${network.name}`);
+            await storageService.removeNetwork(network.networkId, userId);
+            updatedNetworks.splice(i, 1);
+            i--; // Adjust index after removal
+            hasChanges = true;
+          } else if (backendRequest.status === 'approved') {
+            // Request was approved - update to active status
+            console.log(`Request approved for network: ${network.name}`);
+            updatedNetworks[i].membershipStatus = 'active';
+            // Note: In a full implementation, we'd fetch full network details here
+            await storageService.updateNetworkMembershipStatus(network.networkId, 'active', userId);
+            hasChanges = true;
+          } else if (backendRequest.status === 'denied') {
+            // Request was denied - update status
+            console.log(`Request denied for network: ${network.name}`);
+            updatedNetworks[i].membershipStatus = 'denied';
+            await storageService.updateNetworkMembershipStatus(network.networkId, 'denied', userId);
+            hasChanges = true;
+          }
+          // If status is still 'pending', no changes needed
+        }
+      }
+
+      if (hasChanges) {
+        console.log('Pending request statuses synchronized with backend');
+      }
+
+      return updatedNetworks;
+    } catch (error) {
+      console.error('Failed to sync pending request statuses:', error);
+      // Return original networks if sync fails - don't break the UI
+      return networks;
+    }
+  };
+
+  const loadPendingCounts = async (networkList: StoredNetwork[]): Promise<void> => {
+    const counts: Record<string, number> = {};
+    
+    // Only check pending counts for networks where user is admin/creator
+    const adminNetworks = networkList.filter(n => n.myRole === 'admin' || n.isCreator);
+    
+    for (const network of adminNetworks) {
+      try {
+        const requests = await authAPI.getNetworkJoinRequests(network.networkId, authState.token!);
+        const pendingCount = requests.filter(r => r.status === 'pending').length;
+        if (pendingCount > 0) {
+          counts[network.networkId] = pendingCount;
+        }
+      } catch (error) {
+        console.error(`Failed to load pending count for ${network.networkId}:`, error);
+        // Don't show error for this, just continue
+      }
+    }
+    
+    setPendingCounts(counts);
   };
 
   useEffect(() => {
@@ -69,8 +160,33 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleJoinNetwork = (): void => {
-    // TODO: Implement join network flow
-    Alert.alert('Coming Soon', 'Join network feature will be implemented soon');
+    navigation.navigate('JoinNetwork');
+  };
+
+  const handleSyncRequests = async (): void => {
+    if (!authState.userProfile?.username || !authState.token) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const currentNetworks = await storageService.getUserNetworks(authState.userProfile.username);
+      const syncedNetworks = await syncPendingRequestStatuses(currentNetworks, authState.userProfile.username);
+      
+      const sortedNetworks = syncedNetworks.sort((a, b) => {
+        if (a.isCreator && !b.isCreator) return -1;
+        if (!a.isCreator && b.isCreator) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      
+      setNetworks(sortedNetworks);
+      Alert.alert('Sync Complete', 'Pending request statuses have been updated');
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      Alert.alert('Sync Failed', 'Could not sync pending requests. Please try again.');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleSignOut = (): void => {
@@ -108,14 +224,38 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleNetworkPress = (network: StoredNetwork): void => {
+    const isAdmin = network.myRole === 'admin' || network.isCreator;
+    const pendingCount = pendingCounts[network.networkId] || 0;
+    
+    const buttons = [
+      {text: 'Copy Invite Code', onPress: () => copyInviteCode(network.inviteCode)},
+    ];
+    
+    if (isAdmin && pendingCount > 0) {
+      buttons.unshift({
+        text: `View Pending Requests (${pendingCount})`,
+        onPress: () => navigation.navigate('PendingApprovals', {
+          networkId: network.networkId,
+          networkName: network.name,
+        }),
+      });
+    } else if (isAdmin) {
+      buttons.unshift({
+        text: 'View Join Requests',
+        onPress: () => navigation.navigate('PendingApprovals', {
+          networkId: network.networkId,
+          networkName: network.name,
+        }),
+      });
+    }
+    
+    buttons.push({text: 'OK'});
+    
     // TODO: Navigate to network details/chat
     Alert.alert(
       network.name,
       `Role: ${network.myRole}\nMembers: ${network.memberCount}/${network.maxMembers}\nInvite Code: ${network.inviteCode}`,
-      [
-        {text: 'Copy Invite Code', onPress: () => copyInviteCode(network.inviteCode)},
-        {text: 'OK'},
-      ]
+      buttons
     );
   };
 
@@ -147,6 +287,32 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
     backgroundColor: getRoleColor(role),
   });
 
+  const getStatusBadgeColor = (status: 'active' | 'pending' | 'denied'): string => {
+    switch (status) {
+      case 'active':
+        return '#10b981'; // Green
+      case 'pending':
+        return '#f59e0b'; // Orange/Amber
+      case 'denied':
+        return '#ef4444'; // Red
+      default:
+        return '#10b981';
+    }
+  };
+
+  const getStatusText = (status: 'active' | 'pending' | 'denied'): string => {
+    switch (status) {
+      case 'active':
+        return 'ACTIVE';
+      case 'pending':
+        return 'PENDING';
+      case 'denied':
+        return 'DENIED';
+      default:
+        return 'ACTIVE';
+    }
+  };
+
   const formatDate = (dateStr: string): string => {
     try {
       const date = new Date(dateStr);
@@ -173,9 +339,26 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
         <View style={styles.networkTitleContainer}>
           <Text style={styles.networkName}>{item.name}</Text>
           {item.isCreator && <Text style={styles.creatorBadge}>Creator</Text>}
+          {pendingCounts[item.networkId] && pendingCounts[item.networkId] > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationText}>{pendingCounts[item.networkId]}</Text>
+              <Text style={styles.notificationIcon}>🔔</Text>
+            </View>
+          )}
         </View>
-        <View style={getRoleBadgeStyle(item.myRole)}>
-          <Text style={styles.roleBadgeText}>{item.myRole.toUpperCase()}</Text>
+        <View style={styles.badgesContainer}>
+          {/* Show membership status badge for non-active networks */}
+          {item.membershipStatus && item.membershipStatus !== 'active' && (
+            <View style={[styles.statusBadge, {backgroundColor: getStatusBadgeColor(item.membershipStatus)}]}>
+              <Text style={styles.statusBadgeText}>{getStatusText(item.membershipStatus)}</Text>
+            </View>
+          )}
+          {/* Show role badge only for active networks */}
+          {(!item.membershipStatus || item.membershipStatus === 'active') && (
+            <View style={getRoleBadgeStyle(item.myRole)}>
+              <Text style={styles.roleBadgeText}>{item.myRole.toUpperCase()}</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -234,6 +417,22 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
         showHomeButton={true}
         showLogoutButton={true}
       />
+
+      {/* Sync button for pending requests */}
+      {networks.some(n => n.membershipStatus === 'pending') && (
+        <View style={styles.syncButtonContainer}>
+          <TouchableOpacity
+            style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+            onPress={handleSyncRequests}
+            disabled={syncing}>
+            {syncing ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Text style={styles.syncButtonText}>🔄 Sync Pending Requests</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {networks.length > 0 ? (
         <FlatList
@@ -311,6 +510,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  notificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  notificationText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginRight: 2,
+  },
+  notificationIcon: {
+    fontSize: 10,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   roleBadge: {
     paddingHorizontal: 8,
@@ -447,6 +679,29 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  syncButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#374151',
+  },
+  syncButton: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  syncButtonDisabled: {
+    opacity: 0.6,
+  },
+  syncButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

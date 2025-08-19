@@ -12,6 +12,10 @@ import NetworkSetupScreen from '../screens/NetworkSetupScreen';
 import NetworkSettingsScreen from '../screens/NetworkSettingsScreen';
 import NetworkCreatedScreen from '../screens/NetworkCreatedScreen';
 import NetworksListScreen from '../screens/NetworksListScreen';
+import JoinNetworkScreen from '../screens/JoinNetworkScreen';
+import NetworkDetailsScreen from '../screens/NetworkDetailsScreen';
+import PendingApprovalsScreen from '../screens/PendingApprovalsScreen';
+import ApproveMemberScreen from '../screens/ApproveMemberScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -30,7 +34,6 @@ export type RootStackParamList = {
   NetworkSettings: {
     networkName: string;
     description: string;
-    networkId: string;
     maxMembers: number;
   };
   NetworkCreated: {
@@ -44,6 +47,37 @@ export type RootStackParamList = {
       memberPermissions: 'admin_only' | 'members_can_invite';
       dataRetention: 'forever' | '30_days' | '7_days';
     };
+  };
+  JoinNetwork: undefined;
+  NetworkDetails: {
+    network: {
+      networkId: string;
+      name: string;
+      description: string;
+      creator: string;
+      memberCount: number;
+      maxMembers: number;
+      tier: 'free' | 'pro' | 'enterprise';
+      requiresApproval: boolean;
+    };
+    inviteCode: string;
+  };
+  PendingApprovals: {
+    networkId: string;
+    networkName: string;
+  };
+  ApproveMember: {
+    request: {
+      requestId: string;
+      networkId: string;
+      networkName: string;
+      username: string;
+      displayName: string;
+      message: string;
+      requestedAt: string;
+      status: 'pending' | 'approved' | 'denied';
+    };
+    networkName: string;
   };
 };
 
@@ -83,6 +117,10 @@ const AppStackNavigator: React.FC = () => {
             <Stack.Screen name="NetworkSetup" component={NetworkSetupScreen} />
             <Stack.Screen name="NetworkSettings" component={NetworkSettingsScreen} />
             <Stack.Screen name="NetworkCreated" component={NetworkCreatedScreen} />
+            <Stack.Screen name="JoinNetwork" component={JoinNetworkScreen} />
+            <Stack.Screen name="NetworkDetails" component={NetworkDetailsScreen} />
+            <Stack.Screen name="PendingApprovals" component={PendingApprovalsScreen} />
+            <Stack.Screen name="ApproveMember" component={ApproveMemberScreen} />
           </>
         ) : (
           // Unauthenticated stack

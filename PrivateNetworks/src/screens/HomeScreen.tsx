@@ -152,7 +152,9 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
             <Text style={styles.primaryButtonText}>Create Network</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton}>
+          <TouchableOpacity 
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('JoinNetwork')}>
             <Text style={styles.secondaryButtonText}>Join with Invite Code</Text>
           </TouchableOpacity>
         </View>

@@ -18,6 +18,9 @@ export interface StoredNetwork {
   joinedAt: string;
   createdAt: string;
   isCreator: boolean;
+  membershipStatus: 'active' | 'pending' | 'denied';
+  requestId?: string; // For pending/denied requests
+  creator?: string; // Network creator username
 }
 
 const STORAGE_KEYS = {
@@ -300,6 +303,85 @@ class StorageService {
       console.log('Networks cleared for user:', userId);
     } catch (error) {
       console.error('Failed to clear networks for user:', userId, error);
+    }
+  }
+
+  async storePendingNetwork(
+    networkId: string,
+    networkName: string,
+    networkDescription: string,
+    creator: string,
+    requestId: string,
+    userId: string
+  ): Promise<void> {
+    try {
+      const networks = await this.getUserNetworks(userId);
+      
+      // Check if network already exists (don't duplicate)
+      const existingIndex = networks.findIndex(n => n.networkId === networkId);
+      if (existingIndex >= 0) {
+        // Update existing network status
+        networks[existingIndex].membershipStatus = 'pending';
+        networks[existingIndex].requestId = requestId;
+      } else {
+        // Add new pending network
+        const pendingNetwork: StoredNetwork = {
+          networkId,
+          name: networkName,
+          description: networkDescription,
+          inviteCode: '', // Will be updated when approved
+          myRole: 'member', // Default role for pending requests
+          memberCount: 0, // Unknown until approved
+          maxMembers: 0, // Unknown until approved
+          tier: 'free', // Default assumption
+          settings: {
+            joinApproval: 'require_admin',
+            memberPermissions: 'admin_only',
+            dataRetention: '30_days',
+          },
+          joinedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          isCreator: false,
+          membershipStatus: 'pending',
+          requestId,
+          creator,
+        };
+        networks.push(pendingNetwork);
+      }
+      
+      const userNetworksKey = this.getUserNetworksKey(userId);
+      await AsyncStorage.setItem(userNetworksKey, JSON.stringify(networks));
+      console.log('Pending network stored for user:', userId, 'networkId:', networkId);
+    } catch (error) {
+      console.error('Failed to store pending network:', error);
+      throw new Error('Failed to store pending network');
+    }
+  }
+
+  async updateNetworkMembershipStatus(
+    networkId: string,
+    status: 'active' | 'pending' | 'denied',
+    userId: string,
+    networkDetails?: Partial<StoredNetwork>
+  ): Promise<void> {
+    try {
+      const networks = await this.getUserNetworks(userId);
+      const networkIndex = networks.findIndex(n => n.networkId === networkId);
+      
+      if (networkIndex >= 0) {
+        networks[networkIndex].membershipStatus = status;
+        
+        // If approved, update with full network details
+        if (status === 'active' && networkDetails) {
+          Object.assign(networks[networkIndex], networkDetails);
+        }
+        
+        const userNetworksKey = this.getUserNetworksKey(userId);
+        await AsyncStorage.setItem(userNetworksKey, JSON.stringify(networks));
+        console.log('Network membership status updated:', networkId, status);
+      }
+    } catch (error) {
+      console.error('Failed to update network membership status:', error);
     }
   }
 

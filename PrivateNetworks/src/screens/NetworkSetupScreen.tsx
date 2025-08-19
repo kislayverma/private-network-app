@@ -26,35 +26,7 @@ interface Props {
 const NetworkSetupScreen: React.FC<Props> = ({navigation}) => {
   const [networkName, setNetworkName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [networkId, setNetworkId] = useState<string>('');
   const [maxMembers] = useState<number>(10); // Free tier limit
-
-  React.useEffect(() => {
-    // Auto-generate network ID when name changes
-    if (networkName.trim()) {
-      const sanitized = networkName
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '-')
-        .slice(0, 20);
-      const year = new Date().getFullYear();
-      setNetworkId(`${sanitized}-${year}`);
-    } else {
-      setNetworkId('');
-    }
-  }, [networkName]);
-
-  const handleRegenerateId = (): void => {
-    if (networkName.trim()) {
-      const sanitized = networkName
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '-')
-        .slice(0, 20);
-      const timestamp = Date.now().toString().slice(-6);
-      setNetworkId(`${sanitized}-${timestamp}`);
-    }
-  };
 
   const handleContinue = (): void => {
     if (!networkName.trim()) {
@@ -67,16 +39,10 @@ const NetworkSetupScreen: React.FC<Props> = ({navigation}) => {
       return;
     }
 
-    if (!networkId.trim()) {
-      Alert.alert('Error', 'Network ID is required');
-      return;
-    }
-
     // Navigate to network settings screen
     navigation.navigate('NetworkSettings', {
       networkName: networkName.trim(),
       description: description.trim(),
-      networkId: networkId.trim(),
       maxMembers,
     });
   };
@@ -125,28 +91,6 @@ const NetworkSetupScreen: React.FC<Props> = ({navigation}) => {
             <Text style={styles.charCount}>{description.length}/200</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Network ID (auto-generated)</Text>
-            <View style={styles.networkIdContainer}>
-              <Text style={styles.networkIdText}>
-                {networkId || 'Enter network name first...'}
-              </Text>
-              <TouchableOpacity
-                onPress={handleRegenerateId}
-                disabled={!networkName.trim()}
-                style={[
-                  styles.regenerateButton,
-                  !networkName.trim() && styles.regenerateButtonDisabled,
-                ]}>
-                <Text style={[
-                  styles.regenerateButtonText,
-                  !networkName.trim() && styles.regenerateButtonTextDisabled,
-                ]}>
-                  Regenerate
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           <View style={styles.membersContainer}>
             <Text style={styles.membersTitle}>Initial Members</Text>
@@ -214,39 +158,6 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'right',
     marginTop: 4,
-  },
-  networkIdContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#374151',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#4b5563',
-  },
-  networkIdText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#d1d5db',
-    fontFamily: 'monospace',
-  },
-  regenerateButton: {
-    backgroundColor: '#6366f1',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  regenerateButtonDisabled: {
-    backgroundColor: '#4b5563',
-  },
-  regenerateButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  regenerateButtonTextDisabled: {
-    color: '#9ca3af',
   },
   membersContainer: {
     backgroundColor: '#1f2937',

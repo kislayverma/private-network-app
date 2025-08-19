@@ -8,10 +8,18 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../navigation/AppNavigator';
 import {useAuth} from '../context/AuthContext';
 import {storageService} from '../services/storage';
 
-const HomeScreen: React.FC = () => {
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+
+interface Props {
+  navigation: HomeScreenNavigationProp;
+}
+
+const HomeScreen: React.FC<Props> = ({navigation}) => {
   const {authState, signOut, refreshAuthState} = useAuth();
 
   const handleSignOut = (): void => {
@@ -70,7 +78,9 @@ const HomeScreen: React.FC = () => {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate('NetworkSetup')}>
             <Text style={styles.primaryButtonText}>Create Network</Text>
           </TouchableOpacity>
 

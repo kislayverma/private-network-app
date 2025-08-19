@@ -59,6 +59,50 @@ export interface UserProfile {
   subscription: string;
 }
 
+export interface CreateNetworkRequest {
+  networkName: string;
+  description: string;
+  networkId: string;
+  settings: {
+    joinApproval: 'require_admin' | 'auto_approve';
+    memberPermissions: 'admin_only' | 'members_can_invite';
+    dataRetention: 'forever' | '30_days' | '7_days';
+    maxMembers: number;
+  };
+}
+
+export interface CreateNetworkResponse {
+  success: boolean;
+  networkId: string;
+  inviteCode: string;
+  created: string;
+}
+
+export interface NetworkDetails {
+  networkId: string;
+  name: string;
+  description: string;
+  creator: string;
+  admins: string[];
+  members: Array<{
+    userId: string;
+    role: 'admin' | 'member' | 'read-only';
+    joinedAt: string;
+  }>;
+  settings: {
+    joinApproval: 'require_admin' | 'auto_approve';
+    memberPermissions: 'admin_only' | 'members_can_invite';
+    dataRetention: 'forever' | '30_days' | '7_days';
+    maxMembers: number;
+  };
+  billing: {
+    tier: 'free' | 'pro' | 'enterprise';
+    memberCount: number;
+  };
+  inviteCode: string;
+  created: string;
+}
+
 export interface CheckUsernameResponse {
   available: boolean;
   userId: string;
@@ -124,6 +168,64 @@ class AuthAPI {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.message || 'Failed to get profile');
+      }
+      throw error;
+    }
+  }
+
+  async createNetwork(data: CreateNetworkRequest, token: string): Promise<CreateNetworkResponse> {
+    try {
+      const response: AxiosResponse<CreateNetworkResponse> = await api.post(
+        '/network/create',
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Failed to create network');
+      }
+      throw error;
+    }
+  }
+
+  async getNetwork(networkId: string, token: string): Promise<NetworkDetails> {
+    try {
+      const response: AxiosResponse<NetworkDetails> = await api.get(
+        `/network/${networkId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Failed to get network details');
+      }
+      throw error;
+    }
+  }
+
+  async getUserNetworks(token: string): Promise<NetworkDetails[]> {
+    try {
+      const response: AxiosResponse<{networks: NetworkDetails[]}> = await api.get(
+        '/user/networks',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data.networks;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Failed to get user networks');
       }
       throw error;
     }

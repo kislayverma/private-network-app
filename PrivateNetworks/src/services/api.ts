@@ -2,9 +2,7 @@ import axios, {AxiosResponse} from 'axios';
 import {Platform} from 'react-native';
 
 const API_BASE_URL = __DEV__ 
-  ? Platform.OS === 'ios' 
-    ? 'http://127.0.0.1:3001/api'
-    : 'http://10.0.2.2:3001/api'
+  ? 'http://192.168.1.109:3001/api'  // HTTP API server port
   : 'https://your-production-api.com/api';
 
 const api = axios.create({
@@ -175,6 +173,62 @@ export interface PendingJoinRequest {
 export interface UserPendingRequestsResponse {
   success: boolean;
   requests: PendingJoinRequest[];
+}
+
+export interface NetworkPeerResponse {
+  online: boolean;
+  deviceId?: string;
+  signalAddress?: string;
+  capabilities?: string[];
+  lastSeen?: string;
+  lastCoordinators?: string[];
+}
+
+export interface NetworkPeersResponse {
+  peers: Array<{
+    userId: string;
+    deviceId: string;
+    signalAddress: string;
+    capabilities: string[];
+    isCoordinator: boolean;
+    lastSeen: string;
+  }>;
+}
+
+export interface AnnouncePresenceRequest {
+  peerId: string;
+  signalAddress: string;
+  capabilities: string[];
+}
+
+export interface SignalingMessage {
+  type: 'offer' | 'answer' | 'ice-candidate';
+  fromPeerId: string;
+  toPeerId: string;
+  data: any;
+  timestamp: number;
+}
+
+export interface PendingSignalingMessagesResponse {
+  messages: SignalingMessage[];
+}
+
+export interface CoordinatorHeartbeatRequest {
+  networkId: string;
+  peerId: string;
+  activePeers: number;
+}
+
+export interface ICEServer {
+  urls: string;
+  username?: string;
+  credential?: string;
+  credentialType?: 'password' | 'token';
+}
+
+export interface ICEServersResponse {
+  iceServers: ICEServer[];
+  ttl: number; // Time-to-live in seconds
 }
 
 class AuthAPI {
@@ -508,6 +562,142 @@ class AuthAPI {
         }
         
         throw new Error('Failed to fetch pending requests');
+      }
+      throw error;
+    }
+  }
+
+  async getNetworkPeer(networkId: string, userId: string, token: string): Promise<NetworkPeerResponse> {
+    try {
+      const response: AxiosResponse<NetworkPeerResponse> = await api.get(
+        `/network/${encodeURIComponent(networkId)}/peer/${encodeURIComponent(userId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message;
+        
+        if (status === 404) {
+          throw new Error('Peer not found');
+        } else if (message) {
+          throw new Error(message);
+        }
+        
+        throw new Error('Failed to get peer info');
+      }
+      throw error;
+    }
+  }
+
+  async announcePresence(networkId: string, data: AnnouncePresenceRequest, token: string): Promise<void> {
+    try {
+      await api.post(
+        `/network/${encodeURIComponent(networkId)}/announce`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        throw new Error(message || 'Failed to announce presence');
+      }
+      throw error;
+    }
+  }
+
+  async coordinatorHeartbeat(data: CoordinatorHeartbeatRequest, token: string): Promise<void> {
+    try {
+      await api.post(
+        '/coordinator/heartbeat',
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        throw new Error(message || 'Failed to send coordinator heartbeat');
+      }
+      throw error;
+    }
+  }
+
+  async getNetworkPeers(networkId: string, token: string): Promise<NetworkPeersResponse> {
+    try {
+      const response: AxiosResponse<NetworkPeersResponse> = await api.get(
+        `/network/${encodeURIComponent(networkId)}/peers`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.message;
+        
+        if (status === 404) {
+          throw new Error('Network not found');
+        } else if (message) {
+          throw new Error(message);
+        }
+        
+        throw new Error('Failed to get network peers');
+      }
+      throw error;
+    }
+  }
+
+  async getPendingSignalingMessages(deviceId: string, token: string): Promise<PendingSignalingMessagesResponse> {
+    try {
+      const response: AxiosResponse<PendingSignalingMessagesResponse> = await api.get(
+        `/signaling/messages/${encodeURIComponent(deviceId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        throw new Error(message || 'Failed to get pending signaling messages');
+      }
+      throw error;
+    }
+  }
+
+  async getICEServers(token: string): Promise<ICEServersResponse> {
+    try {
+      const response: AxiosResponse<ICEServersResponse> = await api.get(
+        '/webrtc/ice-servers',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        throw new Error(message || 'Failed to get ICE servers');
       }
       throw error;
     }

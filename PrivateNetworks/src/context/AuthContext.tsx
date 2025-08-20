@@ -82,6 +82,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
       // Set loading state during sign out
       setAuthState(prev => ({...prev, isLoading: true}));
       
+      // Stop all P2P connections and messaging FIRST
+      console.log('Stopping P2P connections and messaging...');
+      try {
+        const { peerManager } = await import('../services/peerManager');
+        await peerManager.destroy();
+        console.log('✅ P2P services stopped successfully');
+      } catch (error) {
+        console.error('Failed to stop P2P services:', error);
+        // Continue with logout even if P2P cleanup fails
+      }
+      
+      // Clear all stored data
       await storageService.clearAllData();
       
       setAuthState({
@@ -90,6 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         userProfile: null,
         token: null,
       });
+      
+      console.log('✅ User signed out successfully');
     } catch (error) {
       console.error('Sign out failed:', error);
       // Even if clearing data fails, we should still sign out

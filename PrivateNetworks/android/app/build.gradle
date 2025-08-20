@@ -97,6 +97,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            splits {
+                abi {
+                    enable false
+                }
+            }
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -104,6 +109,11 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            splits {
+                abi {
+                    enable false
+                }
+            }
         }
     }
 }

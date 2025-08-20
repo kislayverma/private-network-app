@@ -229,6 +229,13 @@ const NetworksListScreen: React.FC<Props> = ({navigation}) => {
     
     const buttons = [
       {text: 'Copy Invite Code', onPress: () => copyInviteCode(network.inviteCode)},
+      {
+        text: 'View Members',
+        onPress: () => navigation.navigate('MemberList', {
+          networkId: network.networkId,
+          networkName: network.name,
+        }),
+      },
     ];
     
     if (isAdmin && pendingCount > 0) {

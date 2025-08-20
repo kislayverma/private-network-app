@@ -16,6 +16,7 @@ import JoinNetworkScreen from '../screens/JoinNetworkScreen';
 import NetworkDetailsScreen from '../screens/NetworkDetailsScreen';
 import PendingApprovalsScreen from '../screens/PendingApprovalsScreen';
 import ApproveMemberScreen from '../screens/ApproveMemberScreen';
+import MemberListScreen from '../screens/MemberListScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -79,6 +80,10 @@ export type RootStackParamList = {
     };
     networkName: string;
   };
+  MemberList: {
+    networkId: string;
+    networkName: string;
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -121,6 +126,7 @@ const AppStackNavigator: React.FC = () => {
             <Stack.Screen name="NetworkDetails" component={NetworkDetailsScreen} />
             <Stack.Screen name="PendingApprovals" component={PendingApprovalsScreen} />
             <Stack.Screen name="ApproveMember" component={ApproveMemberScreen} />
+            <Stack.Screen name="MemberList" component={MemberListScreen} />
           </>
         ) : (
           // Unauthenticated stack
